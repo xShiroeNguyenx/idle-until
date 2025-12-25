@@ -2,17 +2,31 @@
   "name": "idle-until",
   "version": "0.1.0",
   "description": "Run JavaScript only when it won’t hurt performance",
+  "type": "module",
   "main": "dist/idle-until.min.js",
+  "module": "src/index.js",
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "esbuild src/browser.js --bundle --minify --format=iife --outfile=dist/idle-until.min.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xShiroeNguyenx/idle-until.git"
+  },
   "keywords": [
     "performance",
+    "web-vitals",
     "idle",
-    "defer",
-    "web-vitals"
+    "lcp",
+    "javascript"
   ],
-  "author": "",
+  "author": "Nguyễn Sơn Khánh",
   "license": "MIT",
   "devDependencies": {
     "esbuild": "^0.27.2"
