@@ -65,6 +65,16 @@ idleUntil(() => {
 }).after("lcp");
 ```
 
+### Run after First Contentful Paint (FCP)
+
+Use this trigger to run non-critical JavaScript right after the first contentful paint.
+
+```js
+idleUntil(() => {
+  loadAnalytics();
+}).after("fcp");
+```
+
 ### Run after user interaction
 
 ```js
