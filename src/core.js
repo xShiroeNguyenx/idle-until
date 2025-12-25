@@ -1,3 +1,5 @@
+import { observeFCP } from "./triggers/fcp.js";
+
 export function createIdleUntil(fn) {
   if (typeof fn !== "function") {
     throw new Error("idleUntil expects a function");
@@ -59,46 +61,79 @@ export function createIdleUntil(fn) {
       return this;
     },
 
-    after(type, value) {
-      arm();
+	after(type, value) {
+		arm();
 
-      // delay
-      if (type === "delay") {
-        const id = setTimeout(safeRun, value);
-        addCleanup(() => clearTimeout(id));
-      }
+		let ran = false;
 
-      // LCP
-      if (type === "lcp") {
-        let ran = false;
+		function runOnce() {
+			if (ran) return;
+			ran = true;
+			safeRun();
+		}
 
-        function runOnce() {
-          if (ran) return;
-          ran = true;
-          safeRun();
-        }
+		// ----------------
+		// delay
+		// ----------------
+		if (type === "delay") {
+			const id = setTimeout(runOnce, value);
+			addCleanup(() => clearTimeout(id));
+		}
 
-        const fallbackId = setTimeout(runOnce, 3000);
-        addCleanup(() => clearTimeout(fallbackId));
+		// ----------------
+		// LCP
+		// ----------------
+		if (type === "lcp") {
+			const fallbackId = setTimeout(runOnce, 3000);
+			addCleanup(() => clearTimeout(fallbackId));
 
-        if ("PerformanceObserver" in window) {
-          try {
-            const observer = new PerformanceObserver(list => {
-              if (list.getEntries().length) runOnce();
-            });
+			if ("PerformanceObserver" in window) {
+			try {
+				const observer = new PerformanceObserver(list => {
+				if (list.getEntries().length) runOnce();
+				});
 
-            observer.observe({
-              type: "largest-contentful-paint",
-              buffered: true
-            });
+				observer.observe({
+				type: "largest-contentful-paint",
+				buffered: true
+				});
 
-            addCleanup(() => observer.disconnect());
-          } catch (_) {}
-        }
-      }
+				addCleanup(() => observer.disconnect());
+			} catch (_) {}
+			}
+		}
 
-      return this;
-    },
+		// ----------------
+		// FCP (NEW)
+		// ----------------
+		if (type === "fcp") {
+			const fallbackId = setTimeout(runOnce, 3000);
+			addCleanup(() => clearTimeout(fallbackId));
+
+			if ("PerformanceObserver" in window) {
+			try {
+				const observer = new PerformanceObserver(list => {
+				for (const entry of list.getEntries()) {
+					if (entry.name === "first-contentful-paint") {
+					runOnce();
+					break;
+					}
+				}
+				});
+
+				observer.observe({
+				type: "paint",
+				buffered: true
+				});
+
+				addCleanup(() => observer.disconnect());
+			} catch (_) {}
+			}
+		}
+
+		return this;
+	},
+
 
     on(type, value) {
       arm();

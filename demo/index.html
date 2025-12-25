@@ -1,18 +1,46 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>idle-until demo</title>
-</head>
-<body style="height:200vh">
-  <h1>Scroll or interact</h1>
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>LCP Demo – idle-until</title>
 
-  <script type="module">
-    import idleUntil from "../src/idle-until.js";
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui;
+      }
+      .hero {
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 48px;
+        background: linear-gradient(135deg, #4f46e5, #9333ea);
+        color: white;
+      }
+    </style>
 
-    idleUntil(() => {
-      console.log("🔥 Task executed safely");
-    }).on("interaction");
-  </script>
-</body>
+    <!-- 👇 load idle-until -->
+    <script src="../dist/idle-until.min.js"></script>
+
+    <!-- ❌ CASE KHÔNG idle-until -->
+    <!--
+    <script>
+      const start = performance.now();
+      while (performance.now() - start < 2000) {}
+    </script>
+    -->
+
+    <!-- ✅ CASE DÙNG idle-until -->
+    <script>
+      idleUntil(() => {
+        const start = performance.now();
+        while (performance.now() - start < 2000) {}
+      });
+    </script>
+  </head>
+
+  <body>
+    <div class="hero">🚀 HERO (LCP)</div>
+  </body>
 </html>
