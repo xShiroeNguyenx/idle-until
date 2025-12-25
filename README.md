@@ -1,5 +1,7 @@
 # idle-until
 
+[![npm](https://img.shields.io/npm/v/idle-until)](https://www.npmjs.com/package/idle-until)
+[![npm downloads](https://img.shields.io/npm/dm/idle-until)](https://www.npmjs.com/package/idle-until)
 > Run JavaScript only when it won’t hurt performance
 
 `idle-until` is a tiny, dependency-free JavaScript utility that lets you run tasks at the right time instead of immediately — helping improve performance and Core Web Vitals.
