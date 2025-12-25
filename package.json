@@ -1,0 +1,20 @@
+{
+  "name": "idle-until",
+  "version": "0.1.0",
+  "description": "Run JavaScript only when it won’t hurt performance",
+  "main": "dist/idle-until.min.js",
+  "scripts": {
+    "build": "esbuild src/browser.js --bundle --minify --format=iife --outfile=dist/idle-until.min.js"
+  },
+  "keywords": [
+    "performance",
+    "idle",
+    "defer",
+    "web-vitals"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "esbuild": "^0.27.2"
+  }
+}

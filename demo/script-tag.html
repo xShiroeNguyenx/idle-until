@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>idle-until – script tag test</title>
+  <style>
+    body {
+      height: 200vh;
+      font-family: sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <h1>idle-until test</h1>
+  <p>Open DevTools Console and interact / scroll</p>
+
+<script src="../dist/idle-until.min.js"></script>
+<script>
+  console.log(typeof idleUntil); // "function"
+
+  idleUntil(() => {
+    console.log("🔥 after LCP");
+  }).after("lcp");
+
+  idleUntil(() => {
+    console.log("🔥 after interaction");
+  }).on("interaction");
+</script>
+
+
+</body>
+</html>
