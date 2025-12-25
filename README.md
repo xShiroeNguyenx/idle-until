@@ -183,10 +183,16 @@ idleUntil(task).on("scroll", 0.5);
 
 ## Roadmap
 
-- First Contentful Paint (FCP)
+### v0.2.0
+- First Contentful Paint (FCP) trigger ✅
+- User interaction trigger (`after("interaction")`)
+- Trigger refactor for better extensibility
+- Improved cleanup and safety guarantees
+
+### v0.3.0+
 - Interaction to Next Paint (INP)
-- Multiple conditions support
-- TypeScript definitions
+- Multiple combined conditions (AND / OR)
+- TypeScript type definitions
 
 ---
 
