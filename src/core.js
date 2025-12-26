@@ -131,6 +131,49 @@ export function createIdleUntil(fn) {
 			}
 		}
 
+		// ----------------
+		// interaction
+		// ----------------
+		if (type === "interaction") {
+		const events = ["pointerdown", "click", "keydown", "touchstart"];
+		let cleaned = false;
+
+		function cleanup() {
+			if (cleaned) return;
+			cleaned = true;
+
+			events.forEach(event =>
+			window.removeEventListener(event, onInteract, listenerOptions)
+			);
+		}
+
+		function onInteract() {
+			runOnce();
+			cleanup();
+		}
+
+		const listenerOptions = {
+			passive: true,
+			capture: true
+		};
+
+		// attach listeners
+		events.forEach(event =>
+			window.addEventListener(event, onInteract, listenerOptions)
+		);
+
+		// ensure cleanup on cancel / destroy
+		addCleanup(cleanup);
+
+		// fallback: guarantee execution
+		const fallbackId = setTimeout(() => {
+			runOnce();
+			cleanup();
+		}, 5000);
+
+		addCleanup(() => clearTimeout(fallbackId));
+		}
+
 		return this;
 	},
 
