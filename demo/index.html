@@ -1,46 +1,309 @@
 <!DOCTYPE html>
 <html lang="vi">
-  <head>
-    <meta charset="UTF-8" />
-    <title>LCP Demo – idle-until</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>idle-until — Demo so sánh hiệu năng</title>
 
-    <style>
-      body {
-        margin: 0;
-        font-family: system-ui;
-      }
-      .hero {
-        height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 48px;
-        background: linear-gradient(135deg, #4f46e5, #9333ea);
-        color: white;
-      }
-    </style>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --good: #22c55e;
+      --bad: #ef4444;
+      --brand: #818cf8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    main { max-width: 860px; margin: 0 auto; padding: 24px 18px 80px; }
+    h1 { font-size: 26px; margin: 0 0 4px; }
+    h2 { font-size: 18px; margin: 28px 0 12px; }
+    a { color: var(--brand); }
+    .sub { color: var(--muted); margin: 0 0 20px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      margin: 14px 0;
+    }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    button {
+      font: inherit;
+      font-weight: 600;
+      border: 0;
+      border-radius: 9px;
+      padding: 12px 18px;
+      cursor: pointer;
+      color: #fff;
+    }
+    .btn-bad { background: #b91c1c; }
+    .btn-good { background: #15803d; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .banner {
+      border-radius: 10px; padding: 12px 16px; font-weight: 600; margin: 0 0 16px;
+    }
+    .banner.eager { background: #450a0a; border: 1px solid #b91c1c; }
+    .banner.idle  { background: #052e16; border: 1px solid #15803d; }
+    .tip { background: #422006; border: 1px solid #b45309; border-radius: 10px; padding: 12px 16px; }
+    .clock {
+      font-variant-numeric: tabular-nums;
+      font-size: 40px; font-weight: 700; letter-spacing: 1px;
+    }
+    .light { font-size: 15px; }
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; }
+    .metric { background: #0b1220; border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+    .metric .label { font-size: 12px; color: var(--muted); }
+    .metric .val { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+    th { color: var(--muted); font-weight: 600; font-size: 13px; }
+    td.win { color: var(--good); font-weight: 700; }
+    td.lose { color: var(--bad); }
+    .timeline li { margin: 6px 0; }
+    .note { color: var(--muted); font-size: 13px; }
+    code { background: #0b1220; padding: 2px 6px; border-radius: 5px; }
+    .nav { font-size: 14px; margin-bottom: 8px; }
+  </style>
 
-    <!-- 👇 load idle-until -->
-    <script src="../dist/idle-until.min.js"></script>
+  <!-- 1) Tải thư viện -->
+  <script src="../dist/idle-until.min.js"></script>
 
-    <!-- ❌ CASE KHÔNG idle-until -->
-    <!--
-    <script>
-      const start = performance.now();
-      while (performance.now() - start < 2000) {}
-    </script>
-    -->
+  <!-- 2) Đo đạc + chạy tác vụ nặng theo chế độ (CHẠY TRƯỚC khi body hiển thị) -->
+  <script>
+    (function () {
+      var mode = new URLSearchParams(location.search).get("mode"); // 'eager' | 'idle' | null
+      var HEAVY_MS = 2000;
 
-    <!-- ✅ CASE DÙNG idle-until -->
-    <script>
-      idleUntil(() => {
-        const start = performance.now();
-        while (performance.now() - start < 2000) {}
+      var M = (window.__metrics = {
+        mode: mode, fcp: null, lcp: null, longtask: 0, maxGap: 0, fid: null,
+        heavyStart: null, heavyEnd: null
       });
-    </script>
-  </head>
 
-  <body>
-    <div class="hero">🚀 HERO (LCP)</div>
-  </body>
+      // FCP
+      try {
+        new PerformanceObserver(function (list) {
+          list.getEntries().forEach(function (e) {
+            if (e.name === "first-contentful-paint") M.fcp = e.startTime;
+          });
+        }).observe({ type: "paint", buffered: true });
+      } catch (e) {}
+
+      // LCP
+      try {
+        new PerformanceObserver(function (list) {
+          var es = list.getEntries();
+          M.lcp = es[es.length - 1].startTime;
+        }).observe({ type: "largest-contentful-paint", buffered: true });
+      } catch (e) {}
+
+      // Long tasks (đo thời gian chặn main thread) — chỉ Chromium
+      try {
+        new PerformanceObserver(function (list) {
+          list.getEntries().forEach(function (e) {
+            if (e.duration > M.longtask) M.longtask = e.duration;
+          });
+        }).observe({ type: "longtask", buffered: true });
+      } catch (e) {}
+
+      // First Input Delay — đăng ký SỚM để bắt được cả click lúc màn hình còn trắng
+      function onFirst(ev) {
+        if (M.fid != null) return;
+        M.fid = performance.now() - ev.timeStamp;
+        window.removeEventListener("pointerdown", onFirst, true);
+        window.removeEventListener("keydown", onFirst, true);
+      }
+      window.addEventListener("pointerdown", onFirst, true);
+      window.addEventListener("keydown", onFirst, true);
+
+      // Đồng hồ chạy bằng rAF (KHÔNG dùng CSS — để khi main thread bị chặn nó đứng hình thật)
+      var last = performance.now();
+      M.rafStart = last;
+      (function tick(now) {
+        var gap = now - last;
+        if (gap > M.maxGap) M.maxGap = gap;
+        last = now;
+        M.elapsed = now - M.rafStart;
+        requestAnimationFrame(tick);
+      })(last);
+
+      // Tác vụ nặng: vòng lặp đồng bộ chặn main thread HEAVY_MS ms
+      function heavy() {
+        M.heavyStart = performance.now();
+        var s = performance.now();
+        while (performance.now() - s < HEAVY_MS) { /* block */ }
+        M.heavyEnd = performance.now();
+      }
+      window.__heavy = heavy;
+      window.__HEAVY_MS = HEAVY_MS;
+
+      // Điều phối theo chế độ
+      if (mode === "eager") {
+        heavy(); // chạy NGAY tại đây, trước khi trang vẽ -> chặn FCP
+      } else if (mode === "idle") {
+        idleUntil(heavy).when("idle", { timeout: 2500 }); // hoãn đến khi rảnh
+      }
+    })();
+  </script>
+</head>
+
+<body>
+  <main id="app"></main>
+
+  <script>
+    (function () {
+      var M = window.__metrics;
+      var mode = M.mode;
+      var app = document.getElementById("app");
+
+      var fmt = function (ms) { return ms == null ? "n/a" : Math.round(ms) + " ms"; };
+      var go = function (m) { location.search = m ? "?mode=" + m : ""; };
+
+      // ---------- bảng so sánh (đọc từ localStorage) ----------
+      function read(key) {
+        try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; }
+      }
+      function save(key, data) {
+        try { localStorage.setItem(key, JSON.stringify(data)); return true; } catch (e) { return false; }
+      }
+      function comparisonTable() {
+        var e = read("iu-demo-eager"), i = read("iu-demo-idle");
+        var rows = [
+          ["FCP — nội dung đầu tiên hiện ra", "fcp"],
+          ["LCP — nội dung lớn nhất", "lcp"],
+          ["First Input Delay — độ trễ click đầu", "fid"],
+          ["Tác vụ chặn dài nhất", "longtask"],
+          ["Khựng khung hình lớn nhất", "maxGap"]
+        ];
+        var body = rows.map(function (r) {
+          var ev = e && e[r[1]], iv = i && i[r[1]];
+          var ec = "", ic = "";
+          if (typeof ev === "number" && typeof iv === "number") {
+            if (ev < iv) { ec = "win"; ic = "lose"; }
+            else if (iv < ev) { ic = "win"; ec = "lose"; }
+          }
+          return "<tr><td>" + r[0] + "</td>" +
+            "<td class='" + ec + "'>" + fmt(ev) + "</td>" +
+            "<td class='" + ic + "'>" + fmt(iv) + "</td></tr>";
+        }).join("");
+        var both = e && i;
+        return "<div class='card'><h2>📊 Bảng so sánh (Eager vs idle-until)</h2>" +
+          (both ? "" : "<p class='note'>Chạy <b>cả hai</b> chế độ một lần để bảng điền đủ. " +
+            "Thấp hơn = tốt hơn (xanh).</p>") +
+          "<table><tr><th>Chỉ số</th><th>❌ Eager (không idle-until)</th><th>✅ idle-until</th></tr>" +
+          body + "</table>" +
+          (both ? "<p class='note'>idle-until vẫn chạy đúng tác vụ 2s đó (xem 'Tác vụ chặn dài nhất' gần như nhau) — " +
+            "nhưng FCP và độ trễ click <b>nhỏ hơn hẳn</b> vì cú khựng được dời ra khỏi lúc tải trang.</p>" : "") +
+          "</div>";
+      }
+
+      // ---------- màn hình giới thiệu (không có mode) ----------
+      function intro() {
+        app.innerHTML =
+          "<div class='nav'><a href='./script-tag.html'>→ Demo các trigger (idle/delay/lcp/fcp/interaction/visible/scroll)</a></div>" +
+          "<h1>idle-until — thấy sự khác biệt</h1>" +
+          "<p class='sub'>Cùng một tác vụ JS nặng (chặn main thread ~2 giây). Hãy chạy lần lượt hai chế độ rồi so sánh.</p>" +
+          "<div class='tip'>💡 <b>Mẹo đo độ trễ:</b> ngay khi bấm nút bên dưới và trang tải lại, hãy <b>click hoặc gõ phím càng sớm càng tốt</b> — kể cả khi màn hình còn trắng — để đo First Input Delay.</div>" +
+          "<div class='card'><div class='row'>" +
+          "<button class='btn-bad' id='run-eager'>❌ Chạy KHÔNG idle-until (eager)</button>" +
+          "<button class='btn-good' id='run-idle'>✅ Chạy CÓ idle-until</button>" +
+          "</div><p class='note' style='margin-top:12px'>Eager: tác vụ nặng chạy ngay khi tải trang → chặn lần vẽ đầu tiên. " +
+          "idle-until: trang hiện ra ngay, tác vụ chạy sau khi trình duyệt rảnh.</p></div>" +
+          comparisonTable() +
+          "<div class='card'><p class='note'>⚠️ Nên mở demo qua server (vd <code>npx serve demo</code> rồi vào <code>/index.html</code>) " +
+          "để bảng so sánh lưu được. Mở trực tiếp bằng <code>file://</code> một số trình duyệt sẽ không lưu localStorage.</p>" +
+          "<button class='btn-ghost' id='reset'>Xoá dữ liệu so sánh</button></div>";
+
+        document.getElementById("run-eager").onclick = function () { go("eager"); };
+        document.getElementById("run-idle").onclick = function () { go("idle"); };
+        document.getElementById("reset").onclick = function () {
+          try { localStorage.removeItem("iu-demo-eager"); localStorage.removeItem("iu-demo-idle"); } catch (e) {}
+          intro();
+        };
+      }
+
+      // ---------- màn hình chạy (có mode) ----------
+      function runView() {
+        var isEager = mode === "eager";
+        var timeline = isEager
+          ? "<li><b>0 ms:</b> JS nặng bắt đầu chạy & chặn main thread.</li>" +
+            "<li><b>~2000 ms:</b> trang mới hiển thị lần đầu. Bạn vừa nhìn <b>màn hình trắng 2 giây</b> và mọi click bị treo.</li>"
+          : "<li><b>0 ms:</b> trang hiển thị ngay, bạn click/cuộn được liền.</li>" +
+            "<li><b>khi rảnh:</b> tác vụ nặng mới chạy → đồng hồ dưới đây <b>đứng hình ~2s</b>. Điều này <b>bình thường</b>: " +
+            "idle-until không làm tác vụ nhẹ đi, nó <b>dời</b> cú khựng ra khỏi lúc tải trang quan trọng.</li>";
+
+        app.innerHTML =
+          "<div class='nav'><a href='./index.html'>← Về trang chọn chế độ</a></div>" +
+          "<div class='banner " + (isEager ? "eager" : "idle") + "'>" +
+          (isEager ? "❌ Đang chạy: EAGER (không idle-until)" : "✅ Đang chạy: idle-until") + "</div>" +
+          "<div class='card'><div class='light' id='light'>Main thread: …</div>" +
+          "<div class='clock' id='clock'>0.00 s</div>" +
+          "<p class='note'>Đồng hồ này chạy bằng JavaScript (requestAnimationFrame). Khi main thread bị chặn, nó <b>đứng hình</b>.</p></div>" +
+          "<div class='card'><h2>Chỉ số lần chạy này</h2><div class='metrics' id='metrics'></div>" +
+          "<p class='note' id='saved'></p></div>" +
+          "<div class='card'><h2>Chuyện gì đã xảy ra</h2><ul class='timeline'>" + timeline + "</ul></div>" +
+          "<div class='card'><div class='row'>" +
+          "<button class='" + (isEager ? "btn-good" : "btn-bad") + "' id='other'>" +
+          (isEager ? "✅ Thử lại với idle-until" : "❌ Thử lại kiểu eager") + "</button>" +
+          "<button class='btn-ghost' id='home'>So sánh / chọn lại</button></div></div>" +
+          "<div id='cmp'>" + comparisonTable() + "</div>";
+
+        document.getElementById("other").onclick = function () { go(isEager ? "idle" : "eager"); };
+        document.getElementById("home").onclick = function () { go(null); };
+
+        var clockEl = document.getElementById("clock");
+        var lightEl = document.getElementById("light");
+        var metricsEl = document.getElementById("metrics");
+        var savedEl = document.getElementById("saved");
+        var prevElapsed = -1, persisted = false;
+
+        function renderMetrics() {
+          metricsEl.innerHTML =
+            metric("FCP", M.fcp) + metric("LCP", M.lcp) +
+            metric("First Input Delay", M.fid) +
+            metric("Tác vụ chặn dài nhất", M.longtask || null) +
+            metric("Khựng khung hình lớn nhất", M.maxGap || null);
+        }
+        function metric(label, v) {
+          return "<div class='metric'><div class='label'>" + label + "</div><div class='val'>" + fmt(v) + "</div></div>";
+        }
+
+        // cập nhật đồng hồ + đèn báo bằng setInterval (cũng đứng khi bị chặn)
+        var iv = setInterval(function () {
+          var el = M.elapsed || 0;
+          clockEl.textContent = (el / 1000).toFixed(2) + " s";
+          var frozen = el === prevElapsed; // không nhích = đang bị chặn
+          prevElapsed = el;
+          lightEl.innerHTML = frozen ? "Main thread: 🔴 ĐANG BỊ CHẶN" : "Main thread: 🟢 rảnh";
+          renderMetrics();
+
+          // sau khi tác vụ nặng đã xong + có chút đệm thì lưu kết quả
+          if (!persisted && M.heavyEnd != null && performance.now() - M.heavyEnd > 800) {
+            persisted = true;
+            var ok = save("iu-demo-" + mode, {
+              fcp: M.fcp, lcp: M.lcp, fid: M.fid, longtask: M.longtask, maxGap: M.maxGap
+            });
+            savedEl.textContent = ok ? "✓ Đã ghi kết quả vào bảng so sánh." :
+              "(Không lưu được localStorage — hãy mở qua server thay vì file://)";
+            var cmp = document.getElementById("cmp");
+            if (cmp) cmp.innerHTML = comparisonTable();
+          }
+        }, 150);
+        renderMetrics();
+      }
+
+      if (mode === "eager" || mode === "idle") runView();
+      else intro();
+    })();
+  </script>
+</body>
 </html>
