@@ -1,0 +1,43 @@
+name: Publish
+
+# Publishes to npm when you create a GitHub Release (or run it manually).
+# One-time setup before this can succeed:
+#   1. Add a repo secret named NPM_TOKEN (npm "Automation" token).
+#   2. Bump "version" in package.json before tagging — npm rejects a version
+#      that already exists.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required for npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org' # writes the .npmrc that uses NODE_AUTH_TOKEN
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      # If the very first publish errors on provenance, drop "--provenance"
+      # and re-run — the package will publish fine without it.
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
