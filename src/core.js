@@ -1,29 +1,39 @@
-import { observeFCP } from "./triggers/fcp.js";
+import { idle } from "./triggers/idle.js";
+import { delay } from "./triggers/delay.js";
+import { lcp } from "./triggers/lcp.js";
+import { fcp } from "./triggers/fcp.js";
+import { interaction } from "./triggers/interaction.js";
+import { visible } from "./triggers/visible.js";
+import { scroll } from "./triggers/scroll.js";
+
+function hasDOM() {
+  return typeof window !== "undefined";
+}
 
 export function createIdleUntil(fn) {
   if (typeof fn !== "function") {
     throw new Error("idleUntil expects a function");
   }
 
-  let state = "idle"; // idle | armed | executed
+  let state = "idle"; // idle | armed | executed | cancelled
   const cleanups = [];
   let autoTimer = null;
 
-  function addCleanup(fn) {
-    if (typeof fn === "function") cleanups.push(fn);
+  function addCleanup(c) {
+    if (typeof c === "function") cleanups.push(c);
   }
 
-  function safeRun() {
-    if (state === "executed") return;
-    state = "executed";
-
-    // cleanup all listeners/timers
+  function runCleanups() {
     cleanups.forEach(c => {
       try { c(); } catch (_) {}
     });
     cleanups.length = 0;
+  }
 
-    // run task safely
+  function safeRun() {
+    if (state === "executed" || state === "cancelled") return;
+    state = "executed";
+    runCleanups();
     try {
       fn();
     } catch (err) {
@@ -41,195 +51,46 @@ export function createIdleUntil(fn) {
     }
   }
 
+  // True once the task has run or been cancelled — no further triggers should
+  // attach (doing so would register listeners that never get cleaned up).
+  function settled() {
+    return state === "executed" || state === "cancelled";
+  }
+
+  const ctx = { run: safeRun, addCleanup };
+
   const controller = {
     when(type, options) {
+      if (settled()) return this;
+      if (!hasDOM()) { arm(); return this; }
       arm();
 
-      if (type === "idle") {
-        const timeout = (options && options.timeout) || 2000;
-
-        let idleId = null;
-        let timerId = null;
-
-        if ("requestIdleCallback" in window) {
-          idleId = requestIdleCallback(safeRun);
-        }
-
-        timerId = setTimeout(safeRun, timeout);
-
-        addCleanup(() => {
-          if (idleId && "cancelIdleCallback" in window) {
-            cancelIdleCallback(idleId);
-          }
-          if (timerId) clearTimeout(timerId);
-        });
-      }
+      if (type === "idle") idle(options, ctx);
 
       return this;
     },
 
-	after(type, value) {
-		arm();
-
-		let ran = false;
-
-		function runOnce() {
-			if (ran) return;
-			ran = true;
-			safeRun();
-		}
-
-		// ----------------
-		// delay
-		// ----------------
-		if (type === "delay") {
-			const id = setTimeout(runOnce, value);
-			addCleanup(() => clearTimeout(id));
-		}
-
-		// ----------------
-		// LCP
-		// ----------------
-		if (type === "lcp") {
-			const fallbackId = setTimeout(runOnce, 3000);
-			addCleanup(() => clearTimeout(fallbackId));
-
-			if ("PerformanceObserver" in window) {
-			try {
-				const observer = new PerformanceObserver(list => {
-				if (list.getEntries().length) runOnce();
-				});
-
-				observer.observe({
-				type: "largest-contentful-paint",
-				buffered: true
-				});
-
-				addCleanup(() => observer.disconnect());
-			} catch (_) {}
-			}
-		}
-
-		// ----------------
-		// FCP (NEW)
-		// ----------------
-		if (type === "fcp") {
-			const fallbackId = setTimeout(runOnce, 3000);
-			addCleanup(() => clearTimeout(fallbackId));
-
-			if ("PerformanceObserver" in window) {
-			try {
-				const observer = new PerformanceObserver(list => {
-				for (const entry of list.getEntries()) {
-					if (entry.name === "first-contentful-paint") {
-					runOnce();
-					break;
-					}
-				}
-				});
-
-				observer.observe({
-				type: "paint",
-				buffered: true
-				});
-
-				addCleanup(() => observer.disconnect());
-			} catch (_) {}
-			}
-		}
-
-		// ----------------
-		// interaction
-		// ----------------
-		if (type === "interaction") {
-		const events = ["pointerdown", "click", "keydown", "touchstart"];
-		let cleaned = false;
-
-		function cleanup() {
-			if (cleaned) return;
-			cleaned = true;
-
-			events.forEach(event =>
-			window.removeEventListener(event, onInteract, listenerOptions)
-			);
-		}
-
-		function onInteract() {
-			runOnce();
-			cleanup();
-		}
-
-		const listenerOptions = {
-			passive: true,
-			capture: true
-		};
-
-		// attach listeners
-		events.forEach(event =>
-			window.addEventListener(event, onInteract, listenerOptions)
-		);
-
-		// ensure cleanup on cancel / destroy
-		addCleanup(cleanup);
-
-		// fallback: guarantee execution
-		const fallbackId = setTimeout(() => {
-			runOnce();
-			cleanup();
-		}, 5000);
-
-		addCleanup(() => clearTimeout(fallbackId));
-		}
-
-		return this;
-	},
-
-
-    on(type, value) {
+    after(type, value) {
+      if (settled()) return this;
+      if (!hasDOM()) { arm(); return this; }
       arm();
 
-      if (type === "interaction") {
-        const handler = () => safeRun();
-        const events = ["click", "keydown", "touchstart"];
+      if (type === "delay") delay(value, ctx);
+      else if (type === "lcp") lcp(value, ctx);
+      else if (type === "fcp") fcp(value, ctx);
+      else if (type === "interaction") interaction({ fallback: 5000 }, ctx);
 
-        events.forEach(e =>
-          window.addEventListener(e, handler, { once: true })
-        );
+      return this;
+    },
 
-        addCleanup(() =>
-          events.forEach(e =>
-            window.removeEventListener(e, handler)
-          )
-        );
-      }
+    on(type, value) {
+      if (settled()) return this;
+      if (!hasDOM()) { arm(); return this; }
+      arm();
 
-      if (type === "visible") {
-        const handler = () => {
-          if (document.visibilityState === "visible") safeRun();
-        };
-
-        document.addEventListener("visibilitychange", handler);
-        addCleanup(() =>
-          document.removeEventListener("visibilitychange", handler)
-        );
-      }
-
-      if (type === "scroll") {
-        const threshold = typeof value === "number" ? value : 0.5;
-
-        const handler = () => {
-          const scrolled =
-            (window.scrollY + window.innerHeight) /
-            document.documentElement.scrollHeight;
-
-          if (scrolled >= threshold) safeRun();
-        };
-
-        window.addEventListener("scroll", handler);
-        addCleanup(() =>
-          window.removeEventListener("scroll", handler)
-        );
-      }
+      if (type === "interaction") interaction({}, ctx);
+      else if (type === "visible") visible(value, ctx);
+      else if (type === "scroll") scroll(value, ctx);
 
       return this;
     },
@@ -238,14 +99,27 @@ export function createIdleUntil(fn) {
     // non-critical work. Use this when you're unsure which trigger to pick.
     lazy(options) {
       return this.when("idle", options);
+    },
+
+    // Cancel a pending task: remove all listeners/timers WITHOUT running fn.
+    // No-op if the task has already run or was already cancelled.
+    cancel() {
+      if (settled()) return this;
+      state = "cancelled";
+      if (autoTimer) {
+        clearTimeout(autoTimer);
+        autoTimer = null;
+      }
+      runCleanups();
+      return this;
     }
   };
 
-  // Safe default: if no trigger is attached during the current tick, fall
-  // back to running when the browser is idle. arm() cancels this as soon as
-  // an explicit trigger (when/after/on/lazy) is attached, so an explicit
-  // choice like .after("lcp") always wins.
-  if (typeof window !== "undefined") {
+  // Safe default: if no trigger is attached during the current tick, fall back
+  // to running when the browser is idle. arm() cancels this as soon as an
+  // explicit trigger (when/after/on/lazy) is attached, so an explicit choice
+  // like .after("lcp") always wins.
+  if (hasDOM()) {
     autoTimer = setTimeout(() => {
       autoTimer = null;
       if (state === "idle") controller.when("idle");

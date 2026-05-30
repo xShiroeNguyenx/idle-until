@@ -1,36 +1,21 @@
-export function observeFCP(run, addCleanup, timeout = 3000) {
-  let fired = false;
+// Run after First Contentful Paint, with a 3s fallback if the paint entry
+// never arrives (or PerformanceObserver isn't supported).
+export function fcp(_value, { run, addCleanup }) {
+  const fallbackId = setTimeout(run, 3000);
+  addCleanup(() => clearTimeout(fallbackId));
 
-  function fireOnce() {
-    if (fired) return;
-    fired = true;
-    run();
-  }
-
-  // Fallback timeout
-  const timeoutId = setTimeout(fireOnce, timeout);
-  addCleanup(() => clearTimeout(timeoutId));
-
-  // PerformanceObserver path
   if ("PerformanceObserver" in window) {
     try {
       const observer = new PerformanceObserver(list => {
         for (const entry of list.getEntries()) {
           if (entry.name === "first-contentful-paint") {
-            fireOnce();
+            run();
             break;
           }
         }
       });
-
-      observer.observe({
-        type: "paint",
-        buffered: true
-      });
-
+      observer.observe({ type: "paint", buffered: true });
       addCleanup(() => observer.disconnect());
-    } catch (_) {
-      // silent fallback
-    }
+    } catch (_) {}
   }
 }
