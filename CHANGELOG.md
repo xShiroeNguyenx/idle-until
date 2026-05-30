@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.3.0] - 2026-05-30
 
 ### Added
 - **`cancel()`** — cancel a pending task, removing all listeners/timers without running it.
