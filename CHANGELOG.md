@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **`cancel()`** — cancel a pending task, removing all listeners/timers without running it.
+- Triggers refactored into individual modules under `src/triggers/` (internal; public API unchanged).
+
+### Changed
+- **`on("interaction")`** now also listens on `pointerdown` (4 events total) using
+  passive + capture listeners, matching `after("interaction")`. Previously it used 3
+  events (`click` / `keydown` / `touchstart`) with `{ once: true }`.
+- Triggers are now **SSR-safe**: `when` / `after` / `on` are no-ops (do not run, do not
+  throw) when `window` is undefined, instead of throwing.
+- The `scroll` listener is now registered as **passive**.
+
 ## [0.2.0] - 2026-05-30
 
 ### Added

@@ -16,7 +16,9 @@ Status: `TODO` · `WIP` · `DONE`.
 - **Triggers:** `when("idle")`, `after("delay" | "lcp" | "fcp" | "interaction")`,
   `on("interaction" | "visible" | "scroll")`, plus a **safe default** (no trigger → idle) and `.lazy()`.
 - **Build:** esbuild → minified IIFE (`dist/idle-until.min.js`, gitignored, built in CI); ESM source via `module`.
-- **CI/CD:** GitHub Actions test matrix (Node 18/20) + automated npm publish on GitHub Release.
+- **CI/CD:** GitHub Actions test matrix (Node 18/20) + automated npm publish on GitHub Release
+  (migrated to OIDC **Trusted Publishing** — needs the Trusted Publisher configured on npmjs;
+  first verified on the next release).
 
 ## Milestone v0.2.0 — Released (2026-05-30)
 
@@ -32,12 +34,12 @@ Status: `TODO` · `WIP` · `DONE`.
 
 | # | Item | What & where | Priority | Status |
 |---|------|--------------|----------|--------|
-| 6 | Modularize triggers | Move each trigger into `src/triggers/*.js` (`idle`, `delay`, `lcp`, `fcp`, `interaction`, `visible`, `scroll`); make `core.js` a thin dispatcher. Wire up / reuse the existing `observeFCP` in `src/triggers/fcp.js` and **remove the dead import** at `core.js:1`. | P0 | TODO |
-| 7 | Unify `interaction` logic | Single shared implementation for `after("interaction")` and `on("interaction")`. `after` keeps the 5s fallback; `on` is pure event-driven. | P0 | TODO |
-| 8 | Passive scroll listener | Add `{ passive: true }` to the `scroll` listener in `core.js`. | P0 | TODO |
-| 9 | SSR / non-browser guard | No-op safely when `window`/`document` are undefined across **all** triggers (the safe default is already guarded). | P1 | TODO |
-| 10 | Public `cancel()` | Expose a method that runs cleanups **without** executing `fn`; document it. | P1 | TODO |
-| 11 | Full test suite | Grow `test/behavior.test.mjs` into a Vitest + happy-dom suite: every trigger, cleanup on cancel, fallback timeouts, error catching, `PerformanceObserver`/`requestIdleCallback` absent. | P0 | WIP |
+| 6 | Modularize triggers | **DONE.** Each trigger lives in `src/triggers/*.js`; `core.js` is a thin dispatcher. Dead `observeFCP` import removed; `fcp.js` repurposed as the real handler. | P0 | DONE |
+| 7 | Unify `interaction` logic | **DONE.** One `interaction.js` shared by both; `after` passes `{ fallback: 5000 }`, `on` passes none. (`on` now uses the same 4 events + passive/capture.) | P0 | DONE |
+| 8 | Passive scroll listener | **DONE.** `scroll` listener registered with `{ passive: true }`. | P0 | DONE |
+| 9 | SSR / non-browser guard | **DONE.** `when`/`after`/`on` no-op (don't run, don't throw) when `window` is undefined. | P1 | DONE |
+| 10 | Public `cancel()` | **DONE.** Runs cleanups without executing `fn`; new `cancelled` state; guarded against post-cancel trigger attachment. | P1 | DONE |
+| 11 | Full test suite | Harness `test/behavior.test.mjs` now covers safe default, cancel, SSR, unified interaction (16 checks). Still to do: migrate to Vitest + happy-dom and cover visible/scroll + observer-absent paths. | P0 | WIP |
 | 12 | TypeScript types | Ship `index.d.ts` with a typed chainable API (literal union trigger names + option shapes; include `lazy`). Add JSDoc to source. | P0 | TODO |
 | 13 | Packaging fix | Add an `exports` map; build ESM (`.mjs`) + CJS + IIFE + sourcemaps; fix `main`/`module`/`types`. Today `main` points at the IIFE, breaking `require()`. | P0 | TODO |
 | 14 | Contributor setup | `CONTRIBUTING.md` + a linter (ESLint or Biome) wired into CI. | P2 | TODO |
@@ -61,12 +63,9 @@ Status: `TODO` · `WIP` · `DONE`.
 
 ## Known issues (reference)
 
-- Dead import of `observeFCP` (`src/core.js:1`); FCP duplicated inline. (#6)
-- `after("interaction")` vs `on("interaction")` diverge (event count + fallback). (#7)
-- Non-passive `scroll` listener in `core.js`. (#8)
 - `package.json` `main` → IIFE build breaks Node `require()`; no `exports`/`types`. (#13)
-- SSR guard is only partial: the safe default is `window`-guarded, but the
-  `when`/`after`/`on` trigger bodies still touch `window`/`document` unguarded. (#9)
-- No public `cancel()` yet (#10); tests are a starter harness, not a full suite (#11).
-- ~~`idleUntil(fn)` with no trigger never runs~~ — **fixed** in 0.2.0 (defaults to idle).
+- Tests are a stub harness, not a full framework/coverage suite. (#11)
 - Demos need `npm run build` first on a fresh clone (`dist/` is gitignored).
+- Resolved in the v0.3.0 refactor: dead `observeFCP` import (#6), `interaction`
+  divergence (#7), non-passive scroll (#8), SSR throwing (#9), no `cancel()` (#10).
+- Resolved in 0.2.0: `idleUntil(fn)` with no trigger never ran (now defaults to idle).

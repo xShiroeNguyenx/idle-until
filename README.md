@@ -199,6 +199,8 @@ Supported types:
 
 - `delay` — run after a delay (milliseconds)
 - `lcp` — run after Largest Contentful Paint (Core Web Vital)
+- `fcp` — run after First Contentful Paint
+- `interaction` — run after the first user interaction (with a 5s fallback)
 
 Example:
 
@@ -212,7 +214,7 @@ idleUntil(task).after("lcp");
 
 Supported types:
 
-- `interaction` — first user interaction
+- `interaction` — first user interaction (`pointerdown` / `click` / `keydown` / `touchstart`)
 - `visible` — when tab becomes visible
 - `scroll` — scroll percentage (0 → 1)
 
@@ -220,6 +222,19 @@ Example:
 
 ```js
 idleUntil(task).on("scroll", 0.5);
+```
+
+---
+
+### cancel()
+
+Cancel a pending task: removes all listeners and timers **without** running it.
+No-op if the task has already run or was already cancelled.
+
+```js
+const task = idleUntil(() => loadWidget()).on("interaction");
+// later — e.g. the user navigated away before interacting:
+task.cancel();
 ```
 
 ---
