@@ -7,6 +7,7 @@ export function createIdleUntil(fn) {
 
   let state = "idle"; // idle | armed | executed
   const cleanups = [];
+  let autoTimer = null;
 
   function addCleanup(fn) {
     if (typeof fn === "function") cleanups.push(fn);
@@ -31,10 +32,16 @@ export function createIdleUntil(fn) {
   }
 
   function arm() {
-    if (state === "idle") state = "armed";
+    if (state === "idle") {
+      state = "armed";
+      if (autoTimer) {
+        clearTimeout(autoTimer);
+        autoTimer = null;
+      }
+    }
   }
 
-  return {
+  const controller = {
     when(type, options) {
       arm();
 
@@ -225,6 +232,25 @@ export function createIdleUntil(fn) {
       }
 
       return this;
+    },
+
+    // Preset: run when the browser is idle — the safe default for most
+    // non-critical work. Use this when you're unsure which trigger to pick.
+    lazy(options) {
+      return this.when("idle", options);
     }
   };
+
+  // Safe default: if no trigger is attached during the current tick, fall
+  // back to running when the browser is idle. arm() cancels this as soon as
+  // an explicit trigger (when/after/on/lazy) is attached, so an explicit
+  // choice like .after("lcp") always wins.
+  if (typeof window !== "undefined") {
+    autoTimer = setTimeout(() => {
+      autoTimer = null;
+      if (state === "idle") controller.when("idle");
+    }, 0);
+  }
+
+  return controller;
 }
