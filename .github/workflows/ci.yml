@@ -28,6 +28,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Typecheck (public types)
+        run: npm run test:types
+
       - name: Bundle size guard
         run: |
           SIZE=$(stat -c%s dist/idle-until.min.js)
