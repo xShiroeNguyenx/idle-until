@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **TypeScript type declarations** — `index.d.ts` (ESM) and `index.d.cts` (CommonJS),
+  validated across resolution modes with `@arethetypeswrong/cli` + a `tsc` fixture in CI.
+- **Dual-format build** — ESM (`dist/idle-until.mjs`) + CommonJS (`dist/idle-until.cjs`) +
+  IIFE (`dist/idle-until.min.js`), with a proper `exports` map.
+
+### Fixed
+- `require("idle-until")` now returns the function. Previously `main` pointed at the browser
+  IIFE (which only set `window.idleUntil`), so `require()` / Node consumption was broken.
+
 ## [0.3.0] - 2026-05-30
 
 ### Added

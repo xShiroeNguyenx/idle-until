@@ -41,19 +41,29 @@ All with a simple, chainable API.
 
 ## Installation
 
-### ES Module
-
-```js
-import idleUntil from "./index.js";
+```bash
+npm install idle-until
 ```
 
-### Script tag (UMD build)
+### ESM / bundlers
 
-Use when you don’t want to use a bundler.
+```js
+import idleUntil from "idle-until";
+```
 
-`<script src="idle-until.min.js"></script>`
+### CommonJS
 
-After that, `idleUntil` will be available globally.
+```js
+const idleUntil = require("idle-until");
+```
+
+### Script tag (CDN)
+
+```html
+<script src="https://unpkg.com/idle-until/dist/idle-until.min.js"></script>
+```
+
+After that, `idleUntil` is available globally. TypeScript types ship with the package.
 
 ---
 

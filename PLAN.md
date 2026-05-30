@@ -40,8 +40,8 @@ Status: `TODO` · `WIP` · `DONE`.
 | 9 | SSR / non-browser guard | **DONE.** `when`/`after`/`on` no-op (don't run, don't throw) when `window` is undefined. | P1 | DONE |
 | 10 | Public `cancel()` | **DONE.** Runs cleanups without executing `fn`; new `cancelled` state; guarded against post-cancel trigger attachment. | P1 | DONE |
 | 11 | Full test suite | Harness `test/behavior.test.mjs` now covers safe default, cancel, SSR, unified interaction (16 checks). Still to do: migrate to Vitest + happy-dom and cover visible/scroll + observer-absent paths. | P0 | WIP |
-| 12 | TypeScript types | Ship `index.d.ts` with a typed chainable API (literal union trigger names + option shapes; include `lazy`). Add JSDoc to source. | P0 | TODO |
-| 13 | Packaging fix | Add an `exports` map; build ESM (`.mjs`) + CJS + IIFE + sourcemaps; fix `main`/`module`/`types`. Today `main` points at the IIFE, breaking `require()`. | P0 | TODO |
+| 12 | TypeScript types | **DONE.** Hand-written `index.d.ts` (ESM) + `index.d.cts` (CJS) with overloaded trigger types, `lazy`, `cancel`. Verified by `@arethetypeswrong/cli` (4/4 modes green) + a `tsc` fixture (`test/types-fixture.ts`) wired into CI. | P0 | DONE |
+| 13 | Packaging fix | **DONE.** `build.mjs` emits ESM (`.mjs`) + CJS (`.cjs`, callable `require()`) + IIFE; `exports` map with per-condition types; `main`/`module`/`types` fixed. `require("idle-until")` works now. | P0 | DONE |
 | 14 | Contributor setup | `CONTRIBUTING.md` + a linter (ESLint or Biome) wired into CI. | P2 | TODO |
 
 ## Milestone v0.4.0+ — New Features
