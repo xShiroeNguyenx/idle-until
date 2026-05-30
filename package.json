@@ -3,18 +3,35 @@
   "version": "0.3.0",
   "description": "Run JavaScript only when it won’t hurt performance",
   "type": "module",
-  "main": "dist/idle-until.min.js",
-  "module": "src/index.js",
+  "main": "./dist/idle-until.cjs",
+  "module": "./dist/idle-until.mjs",
+  "types": "./index.d.cts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./index.d.ts",
+        "default": "./dist/idle-until.mjs"
+      },
+      "require": {
+        "types": "./index.d.cts",
+        "default": "./dist/idle-until.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "src",
+    "index.d.ts",
+    "index.d.cts",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "esbuild src/browser.js --bundle --minify --format=iife --outfile=dist/idle-until.min.js",
-    "test": "node test/behavior.test.mjs"
+    "build": "node build.mjs",
+    "test": "node test/behavior.test.mjs",
+    "test:types": "tsc --noEmit --strict test/types-fixture.ts"
   },
   "engines": {
     "node": ">=18"
@@ -33,6 +50,7 @@
   "author": "Nguyễn Sơn Khánh",
   "license": "MIT",
   "devDependencies": {
-    "esbuild": "^0.27.2"
+    "esbuild": "^0.27.2",
+    "typescript": "^6.0.3"
   }
 }
