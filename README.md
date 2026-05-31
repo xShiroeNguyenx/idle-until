@@ -29,13 +29,15 @@ All with a simple, chainable API.
 
 ## Features
 
-- Tiny and dependency-free
+- Tiny and dependency-free (~2KB)
 - Run tasks based on browser state
-- Each task runs only once (auto cleanup)
-- No framework required
-- Safe fallbacks for older browsers
+- Each task runs only once (auto cleanup); cancel anytime with `cancel()`
+- Ships as **ESM, CommonJS, and a script-tag build** — no framework required
+- **TypeScript types included**
 - **Safe default** — if you don't pick a trigger, it runs when the browser is idle
-- **Web Vitals support (LCP / FCP)**
+- **SSR-safe** — a no-op outside the browser (never throws)
+- Safe fallbacks for older browsers
+- **Web Vitals aware (LCP / FCP)**
 
 ---
 
@@ -259,41 +261,46 @@ task.cancel();
 ## Development
 
 ```bash
-npm install     # install dev deps (esbuild)
-npm test        # run the behavior harness
-npm run build   # bundle dist/idle-until.min.js
+npm install         # install dev deps
+npm run build       # build ESM + CommonJS + IIFE into dist/
+npm test            # run the behavior harness
+npm run test:types  # typecheck the public type surface
 ```
 
-CI runs build + tests on every push and PR (Node 18 & 20) and guards the bundle size.
+CI runs the build, behavior tests, the type check, and a bundle-size guard on every
+push and PR (Node 18 & 20).
 
 ### Publishing
 
-Publishing to npm is automated when you create a GitHub Release. One-time setup:
+Publishing to npm is automated by GitHub Actions when you create a GitHub Release,
+using **OIDC Trusted Publishing** (no token stored in the repo):
 
-1. Add an npm **Automation** token as the repo secret `NPM_TOKEN`.
-2. Bump `version` in `package.json`, commit, then create a GitHub Release —
-   the workflow builds, tests, and runs `npm publish`.
+1. One-time: on npmjs.com, configure a **Trusted Publisher** for the package →
+   GitHub Actions → this repo, workflow `publish.yml`.
+2. Bump `version` in `package.json`, commit, then create a GitHub Release — the
+   workflow builds, tests, and publishes via OIDC.
 
 ---
 
 ## Roadmap
 
 ### v0.2.0 ✅ (released 2026-05-30)
-- First Contentful Paint (FCP) trigger
-- User interaction trigger (`after("interaction")`)
+- FCP trigger, `after("interaction")`
 - Safe default (no trigger → runs when idle) + `.lazy()` preset + trigger cheat sheet
 - CI/CD (GitHub Actions: test matrix + automated npm publish)
 
-### v0.3.0
-- Trigger refactor (modularize triggers, unify `interaction`, passive scroll listener)
+### v0.3.0 ✅ (released 2026-05-30)
+- Trigger refactor (modular triggers, unified `interaction`, passive scroll listener)
 - SSR-safe guards + public `cancel()`
-- Test suite (Vitest) + TypeScript type definitions
-- Packaging fix (proper `exports` map, CJS + ESM builds)
+
+### Unreleased
+- Dual ESM/CommonJS build + `exports` map + **TypeScript types** (`require()` now works)
 
 ### v0.4.0+
 - Interaction to Next Paint (INP)
-- Multiple combined conditions (AND / OR)
+- Combined conditions (AND / OR)
 - More triggers (element-in-view, network-idle, media query)
+- Full Vitest test suite, `CONTRIBUTING.md` + linter
 
 ---
 
